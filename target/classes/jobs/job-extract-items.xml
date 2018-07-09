@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch 
+		http://www.springframework.org/schema/batch/spring-batch-2.2.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+		http://www.springframework.org/schema/util 
+		http://www.springframework.org/schema/util/spring-util-3.2.xsd
+		">
+
+	<import resource="../config/context.xml" />
+	<import resource="../config/database.xml" />
+
+	<bean id="itemReader"
+		class="org.springframework.batch.item.database.JdbcCursorItemReader"
+		scope="step">
+		<property name="dataSource" ref="dataSource" />
+		<property name="sql"
+			value="select BankAccountNumber, NextCheckNumber from FROM GLOBAL_BANKK" />
+		<property name="rowMapper">
+			<bean class="com.uvk.mapper.VendorRowMapper" />
+		</property>
+	</bean>
+
+
+
+
+
+	<bean id="itemWriter" class="org.springframework.batch.item.xml.StaxEventItemWriter"
+		scope="step">
+		<property name="resource" value="file:xml/outputs/vendors.xml" />
+		<property name="marshaller" ref="userUnmarshaller" />
+		<property name="rootTagName" value="vendors" />
+	</bean>
+
+	<bean id="userUnmarshaller" class="org.springframework.oxm.xstream.XStreamMarshaller">
+		<property name="aliases">
+			<util:map id="aliases">
+				<entry key="vendor" value="com.uvk.mapper.Vendor" />
+			</util:map>
+		</property>
+	</bean>
+
+	<!-- csv file writer -->
+	<bean id="flatFileItemWriter" class="org.springframework.batch.item.file.FlatFileItemWriter">
+		<property name="resource" value="file:csv/vendors.csv" />
+
+		<property name="appendAllowed" value="true" />
+		<property name="lineAggregator">
+			<bean
+				class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+				<property name="delimiter" value="," />
+				<property name="fieldExtractor">
+					<bean
+						class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+						<property name="names" value="BankAccountNumber, NextCheckNumber" />
+					</bean>
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<job id="testJob" xmlns="http://www.springframework.org/schema/batch">
+		<step id="step1">
+			<tasklet>
+				<chunk reader="itemReader" writer="flatFileItemWriter"
+					commit-interval="1" />
+			</tasklet>
+
+		</step>
+	</job>
+
+</beans>
+	
